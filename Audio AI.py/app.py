@@ -1,12 +1,12 @@
 # audio to text
 # from dotenv import find_dotenv, load_dot_env
-from transformers import pipeline
-from transformers import AutoTokenizer, AutoModelForCausalLM,AutoModel
+import transformers
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel,BitsAndBytesConfig,pipeline
 import torch
-from huggingface_hub import InferenceClient
-from huggingface_hub import login
-import torch
-
+from huggingface_hub import InferenceClient,login
+import bitsandbytes
+import numpy
+print(numpy.__version__)
 api_token ="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"
 
 # Log in to the Hugging Face model hub
@@ -28,9 +28,23 @@ def audioToText(url):
 # print(ASRoutput)
 
 def llm(messages):
+    print(transformers.__version__)
+    print(bitsandbytes.__version__)
+    print(numpy.__version__)
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16
+    )
+    model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        device_map="auto",
+        quantization_config=bnb_config,
+    )
     #load the model
-    model = AutoModel.from_pretrained("backyardai/llama-3-8b-Instruct-GGUF")
-    pipe = pipeline("text-generation", model="meta-llama/Meta-Llama-3-8B-Instruct",device_map="auto",model_kwargs={"torch_dtype": torch.bfloat16})
+    pipe = pipeline("text-generation", model=model,model_kwargs={"torch_dtype": torch.bfloat16})
     #prompt template
     prompt = pipe.tokenizer.apply_chat_template(
         messages,
